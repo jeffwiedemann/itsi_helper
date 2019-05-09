@@ -1,13 +1,19 @@
-<form>
+<form theme="dark">
   <label>ITSI KPI Analysis (With Base Searches)</label>
   <search id="historical">
     <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0 | table *</query>
     <earliest>$field1.earliest$</earliest>
     <latest>$field1.latest$</latest>
     <sampleRatio>1</sampleRatio>
+    <finalized>
+      <condition match="'job.resultCount' != 0">
+        <set token="kpiid_val">$result.kpiid$</set>
+        <set token="serviceid_val">$result.serviceid$</set>
+      </condition>
+    </finalized>
   </search>
   <search id="dynamic">
-    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=* | `assess_severity(2d36d7a9-9e9e-46f8-9c34-94f8f8490d9b, 92008ad9851aef95f4a90932)` | table *</query>
+    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=* | `assess_severity($serviceid_val$, $kpiid_val$)` | table *</query>
     <earliest>$field1.earliest$</earliest>
     <latest>$field1.latest$</latest>
     <sampleRatio>1</sampleRatio>
@@ -15,12 +21,11 @@
   <search id="adjusted">
     <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=*
 | eval alert_value = alert_value * $av_multiplier$
-| `assess_severity(2d36d7a9-9e9e-46f8-9c34-94f8f8490d9b, 92008ad9851aef95f4a90932)` | table *</query>
+| `assess_severity($serviceid_val$, $kpiid_val$)` | table *</query>
     <earliest>$field1.earliest$</earliest>
     <latest>$field1.latest$</latest>
     <sampleRatio>1</sampleRatio>
   </search>
-  
   <fieldset submitButton="false">
     <input type="time" token="field1">
       <label></label>
