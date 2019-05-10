@@ -9,6 +9,16 @@
       <condition match="'job.resultCount' != 0">
         <set token="kpiid_val">$result.kpiid$</set>
         <set token="serviceid_val">$result.serviceid$</set>
+        <set token="hide_panel">1</set>
+      </condition>
+    </finalized>
+  </search>
+  <search base="historical">
+    <query>| timechart count span=1h | stats min(count) as min max(count) as max | eval min=min-1 | eval max=max+1</query>
+    <finalized>
+      <condition match="'job.resultCount' != 0">
+        <set token="kpi_freq_min">$result.min$</set>
+        <set token="kpi_freq_max">$result.max$</set>
       </condition>
     </finalized>
   </search>
@@ -65,16 +75,22 @@
       <chart>
         <search base="historical">
           <query>| timechart count span=1h
-| eval expected_count=12</query>
+| rename count as actual
+| eval expected_1m=60
+| eval expected_5m=12
+| eval expected_15m=4</query>
         </search>
         <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisLabelsY.majorUnit">1</option>
         <option name="charting.axisTitleX.visibility">visible</option>
         <option name="charting.axisTitleY.visibility">visible</option>
         <option name="charting.axisTitleY2.visibility">visible</option>
         <option name="charting.axisX.abbreviation">none</option>
         <option name="charting.axisX.scale">linear</option>
         <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.maximumNumber">$kpi_freq_max$</option>
+        <option name="charting.axisY.minimumNumber">$kpi_freq_min$</option>
         <option name="charting.axisY.scale">linear</option>
         <option name="charting.axisY2.abbreviation">none</option>
         <option name="charting.axisY2.enabled">0</option>
@@ -105,45 +121,20 @@
   <row>
     <panel>
       <title>KPI Result Timestamp Minute of Hour</title>
-      <chart>
+      <viz type="punchcard_app.punchcard">
         <search base="historical">
           <query>| eval stamp_min = strftime(_time, "%M")
 | stats count by stamp_min
-| makecontinuous stamp_min</query>
+| makecontinuous stamp_min
+| eval col="count"
+| table stamp_min, col, count</query>
         </search>
-        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
-        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
-        <option name="charting.axisTitleX.visibility">visible</option>
-        <option name="charting.axisTitleY.visibility">visible</option>
-        <option name="charting.axisTitleY2.visibility">visible</option>
-        <option name="charting.axisX.abbreviation">none</option>
-        <option name="charting.axisX.scale">linear</option>
-        <option name="charting.axisY.abbreviation">none</option>
-        <option name="charting.axisY.scale">linear</option>
-        <option name="charting.axisY2.abbreviation">none</option>
-        <option name="charting.axisY2.enabled">0</option>
-        <option name="charting.axisY2.scale">inherit</option>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.bubbleMaximumSize">50</option>
-        <option name="charting.chart.bubbleMinimumSize">10</option>
-        <option name="charting.chart.bubbleSizeBy">area</option>
-        <option name="charting.chart.nullValueMode">gaps</option>
-        <option name="charting.chart.showDataLabels">none</option>
-        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.chart.style">shiny</option>
-        <option name="charting.drilldown">none</option>
-        <option name="charting.layout.splitSeries">0</option>
-        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
-        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
-        <option name="charting.legend.mode">standard</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="charting.lineWidth">2</option>
+        <option name="drilldown">none</option>
         <option name="refresh.display">progressbar</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
         <option name="trellis.size">medium</option>
-      </chart>
+      </viz>
     </panel>
   </row>
   <row>
@@ -243,7 +234,7 @@
     </panel>
   </row>
   <row>
-    <panel>
+    <panel rejects="$hide_panel$">
       <title>KPI Alert Value Delta (Result to Result)</title>
       <chart>
         <search base="historical">
@@ -423,7 +414,7 @@
     </panel>
   </row>
   <row>
-    <panel>
+    <panel rejects="$hide_panel$">
       <title>KPI Alert Value Delta (Result to Result)</title>
       <chart>
         <search base="dynamic">
@@ -608,7 +599,7 @@
     </panel>
   </row>
   <row>
-    <panel>
+    <panel rejects="$hide_panel$">
       <title>KPI Alert Value Delta (Result to Result)</title>
       <chart>
         <search base="adjusted">
@@ -686,6 +677,86 @@
         <option name="punchcard_app.punchcard.radiusScale">global</option>
         <option name="punchcard_app.punchcard.useColors">true</option>
         <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>KPI Mean Alert Value Distribution</title>
+      <viz type="punchcard_app.punchcard">
+        <search base="historical">
+          <query>| stats mean(alert_value) by date_hour date_wday</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="punchcard_app.punchcard.colorMode">categorical</option>
+        <option name="punchcard_app.punchcard.labelRotation">horizontal</option>
+        <option name="punchcard_app.punchcard.maxColor">#3fc77a</option>
+        <option name="punchcard_app.punchcard.minColor">#d93f3c</option>
+        <option name="punchcard_app.punchcard.numOfBins">6</option>
+        <option name="punchcard_app.punchcard.radiusScale">global</option>
+        <option name="punchcard_app.punchcard.useColors">false</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+    <panel>
+      <title>KPI Min Alert Value Distribution</title>
+      <viz type="punchcard_app.punchcard">
+        <search base="historical">
+          <query>| stats min(alert_value) by date_hour date_wday</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="punchcard_app.punchcard.colorMode">categorical</option>
+        <option name="punchcard_app.punchcard.labelRotation">horizontal</option>
+        <option name="punchcard_app.punchcard.maxColor">#3fc77a</option>
+        <option name="punchcard_app.punchcard.minColor">#d93f3c</option>
+        <option name="punchcard_app.punchcard.numOfBins">6</option>
+        <option name="punchcard_app.punchcard.radiusScale">global</option>
+        <option name="punchcard_app.punchcard.useColors">false</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>KPI Stdev Alert Value Distribution</title>
+      <viz type="punchcard_app.punchcard">
+        <search base="historical">
+          <query>| stats stdev(alert_value) by date_hour date_wday</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="punchcard_app.punchcard.colorMode">categorical</option>
+        <option name="punchcard_app.punchcard.labelRotation">horizontal</option>
+        <option name="punchcard_app.punchcard.maxColor">#3fc77a</option>
+        <option name="punchcard_app.punchcard.minColor">#d93f3c</option>
+        <option name="punchcard_app.punchcard.numOfBins">6</option>
+        <option name="punchcard_app.punchcard.radiusScale">global</option>
+        <option name="punchcard_app.punchcard.useColors">false</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+    <panel>
+      <title>KPI Max Alert Value Distribution</title>
+      <viz type="punchcard_app.punchcard">
+        <search base="historical">
+          <query>| stats max(alert_value) by date_hour date_wday</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="punchcard_app.punchcard.colorMode">categorical</option>
+        <option name="punchcard_app.punchcard.labelRotation">horizontal</option>
+        <option name="punchcard_app.punchcard.maxColor">#3fc77a</option>
+        <option name="punchcard_app.punchcard.minColor">#d93f3c</option>
+        <option name="punchcard_app.punchcard.numOfBins">6</option>
+        <option name="punchcard_app.punchcard.radiusScale">global</option>
+        <option name="punchcard_app.punchcard.useColors">false</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
         <option name="trellis.size">medium</option>
