@@ -1,7 +1,7 @@
 <form theme="dark">
   <label>ITSI KPI Analysis (With Base Searches)</label>
   <search id="historical">
-    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0 | table *</query>
+    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0  is_service_aggregate=1  | table *</query>
     <earliest>$field1.earliest$</earliest>
     <latest>$field1.latest$</latest>
     <sampleRatio>1</sampleRatio>
@@ -24,7 +24,7 @@
   </search>
   <search base="historical">
     <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
-| eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin | eval a_bin=round(a_bin*1) | eval b_bin=round(b_bin*5)</query>
+| eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin | eval a_bin=round(a_bin*1) | eval b_bin=round(b_bin*5) | eval a_bin = if(a_bin=0,1,a_bin) | eval b_bin = if(b_bin=0,1,b_bin)</query>
     <finalized>
       <condition match="'job.resultCount' != 0">
         <set token="a_bin_tok">$result.a_bin$</set>
@@ -33,13 +33,13 @@
     </finalized>
   </search>
   <search id="dynamic">
-    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=* | `assess_severity($serviceid_val$, $kpiid_val$)` | table *</query>
+    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0  is_service_aggregate=1 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=* | `assess_severity($serviceid_val$, $kpiid_val$)` | table *</query>
     <earliest>$field1.earliest$</earliest>
     <latest>$field1.latest$</latest>
     <sampleRatio>1</sampleRatio>
   </search>
   <search id="adjusted">
-    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=*
+    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0  is_service_aggregate=1 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=*
 | eval alert_value = alert_value * $av_multiplier$
 | `assess_severity($serviceid_val$, $kpiid_val$)` | table *</query>
     <earliest>$field1.earliest$</earliest>
