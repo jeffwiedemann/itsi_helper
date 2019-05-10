@@ -22,6 +22,16 @@
       </condition>
     </finalized>
   </search>
+  <search base="historical">
+    <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
+| eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin | eval a_bin=round(a_bin*1) | eval b_bin=round(b_bin*5)</query>
+    <finalized>
+      <condition match="'job.resultCount' != 0">
+        <set token="a_bin_tok">$result.a_bin$</set>
+        <set token="b_bin_tok">$result.b_bin$</set>
+      </condition>
+    </finalized>
+  </search>
   <search id="dynamic">
     <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=* | `assess_severity($serviceid_val$, $kpiid_val$)` | table *</query>
     <earliest>$field1.earliest$</earliest>
@@ -771,8 +781,8 @@
           <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
 | eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin
 
-| bin a_value span=120 as a_policy
-| bin b_value span=600 as b_policy
+| bin a_value span=$a_bin_tok$ as a_policy
+| bin b_value span=$b_bin_tok$ as b_policy
 
 | eval policy_intersect = "[".a_policy."] - [".b_policy."]"
 
@@ -810,8 +820,8 @@
           <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
 | eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin
 
-| bin a_value span=120 as a_policy
-| bin b_value span=600 as b_policy
+| bin a_value span=$a_bin_tok$ as a_policy
+| bin b_value span=$b_bin_tok$ as b_policy
 
 | eval policy_intersect = "[".a_policy."] - [".b_policy."]"
 
