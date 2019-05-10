@@ -763,4 +763,87 @@
       </viz>
     </panel>
   </row>
+  <row>
+    <panel>
+      <title>Suggested Time Policy for Standard Deviation</title>
+      <table>
+        <search base="historical">
+          <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
+| eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin
+
+| bin a_value span=120 as a_policy
+| bin b_value span=600 as b_policy
+
+| eval policy_intersect = "[".a_policy."] - [".b_policy."]"
+
+| eval date_hour=if(date_hour&lt;10,"0".date_hour, date_hour)
+| eval date_wday=case(date_wday="monday",1,date_wday="tuesday",2,date_wday="wednesday",3,date_wday="thursday",4,date_wday="friday",5,date_wday="saturday",6,date_wday="sunday",7)."-".date_wday
+
+| streamstats count as policy
+| eventstats first(policy) as policy by policy_intersect
+
+| eventstats count as policy_cnt by policy
+| eventstats max(policy_cnt) as max_policy
+| eval policy = if(policy_cnt=max_policy, "", policy)
+
+| sort date_hour, date_wday
+
+| fields - max_policy policy_cnt date policy_num
+
+| chart limit=0 values(policy) over date_wday by date_hour</query>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="historical">
+          <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
+| eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin
+
+| bin a_value span=120 as a_policy
+| bin b_value span=600 as b_policy
+
+| eval policy_intersect = "[".a_policy."] - [".b_policy."]"
+
+| eval date_hour=if(date_hour&lt;10,"0".date_hour, date_hour)
+| eval date_wday=case(date_wday="monday",1,date_wday="tuesday",2,date_wday="wednesday",3,date_wday="thursday",4,date_wday="friday",5,date_wday="saturday",6,date_wday="sunday",7)."-".date_wday
+
+| streamstats count as policy
+| eventstats first(policy) as policy by policy_intersect
+
+| eventstats count as policy_cnt by policy
+| eventstats max(policy_cnt) as max_policy
+| eval policy = if(policy_cnt=max_policy, "default", policy)
+
+| sort date_hour, date_wday
+
+| fields - max_policy policy_cnt date policy_num
+
+| stats first(date_hour) as date_hour, first(date_wday) as date_wday values(a_policy) as a_policy values(b_policy) as b_policy avg(a_value) as a_value avg(b_value) as b_value by policy
+
+| sort date_hour, date_wday
+| table policy, a_policy, b_policy
+| rename a_policy as "Stdev Range", b_policy as "Mean Range"</query>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
 </form>
