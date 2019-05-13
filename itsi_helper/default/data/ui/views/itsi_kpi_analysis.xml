@@ -22,16 +22,6 @@
       </condition>
     </finalized>
   </search>
-  <search base="historical">
-    <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
-| eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin | eval a_bin=round(a_bin*1) | eval b_bin=round(b_bin*5) | eval a_bin = if(a_bin=0,1,a_bin) | eval b_bin = if(b_bin=0,1,b_bin)</query>
-    <finalized>
-      <condition match="'job.resultCount' != 0">
-        <set token="a_bin_tok">$result.a_bin$</set>
-        <set token="b_bin_tok">$result.b_bin$</set>
-      </condition>
-    </finalized>
-  </search>
   <search id="dynamic">
     <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0  is_service_aggregate=1 alert_value=* alert_severity=* alert_level=* date_hour=* date_wday=* | `assess_severity($serviceid_val$, $kpiid_val$)` | table *</query>
     <earliest>$field1.earliest$</earliest>
@@ -695,29 +685,17 @@
   </row>
   <row>
     <panel>
+      <html>
+        <h1>Time Policy Suggestions and Guidance</h1>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
       <title>KPI Mean Alert Value Distribution</title>
       <viz type="punchcard_app.punchcard">
         <search base="historical">
           <query>| stats mean(alert_value) by date_hour date_wday</query>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="punchcard_app.punchcard.colorMode">categorical</option>
-        <option name="punchcard_app.punchcard.labelRotation">horizontal</option>
-        <option name="punchcard_app.punchcard.maxColor">#3fc77a</option>
-        <option name="punchcard_app.punchcard.minColor">#d93f3c</option>
-        <option name="punchcard_app.punchcard.numOfBins">6</option>
-        <option name="punchcard_app.punchcard.radiusScale">global</option>
-        <option name="punchcard_app.punchcard.useColors">false</option>
-        <option name="trellis.enabled">0</option>
-        <option name="trellis.scales.shared">1</option>
-        <option name="trellis.size">medium</option>
-      </viz>
-    </panel>
-    <panel>
-      <title>KPI Min Alert Value Distribution</title>
-      <viz type="punchcard_app.punchcard">
-        <search base="historical">
-          <query>| stats min(alert_value) by date_hour date_wday</query>
         </search>
         <option name="drilldown">none</option>
         <option name="punchcard_app.punchcard.colorMode">categorical</option>
@@ -753,6 +731,67 @@
         <option name="trellis.size">medium</option>
       </viz>
     </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Suggested Time Policy for Standard Deviation</title>
+      <input type="text" token="num_clusters">
+        <label>Target Number of Time Policies</label>
+        <default>5</default>
+      </input>
+      <table>
+        <search base="historical">
+          <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday 
+| fit KMeans k=$num_clusters$ "a_value" "b_value"
+
+| eval date_hour=if(date_hour&lt;10,"0".date_hour, date_hour)
+| eval date_wday=case(date_wday="monday",1,date_wday="tuesday",2,date_wday="wednesday",3,date_wday="thursday",4,date_wday="friday",5,date_wday="saturday",6,date_wday="sunday",7)."-".date_wday
+
+| sort date_hour, date_wday
+
+| eventstats count as policy_cnt by cluster
+| eventstats max(policy_cnt) as max_policy
+| eval policy = if(policy_cnt=max_policy, "", cluster)
+
+| sort date_hour, date_wday
+
+| fields - max_policy policy_cnt date policy_num
+
+| chart limit=0 values(policy) over date_wday by date_hour</query>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>KPI Min Alert Value Distribution</title>
+      <viz type="punchcard_app.punchcard">
+        <search base="historical">
+          <query>| stats min(alert_value) by date_hour date_wday</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="punchcard_app.punchcard.colorMode">categorical</option>
+        <option name="punchcard_app.punchcard.labelRotation">horizontal</option>
+        <option name="punchcard_app.punchcard.maxColor">#3fc77a</option>
+        <option name="punchcard_app.punchcard.minColor">#d93f3c</option>
+        <option name="punchcard_app.punchcard.numOfBins">6</option>
+        <option name="punchcard_app.punchcard.radiusScale">global</option>
+        <option name="punchcard_app.punchcard.useColors">false</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
     <panel>
       <title>KPI Max Alert Value Distribution</title>
       <viz type="punchcard_app.punchcard">
@@ -775,75 +814,30 @@
   </row>
   <row>
     <panel>
-      <title>Suggested Time Policy for Standard Deviation</title>
+      <title>Suggested Time Policy for Range and Quantile</title>
+      <input type="text" token="num_clusters2">
+        <label>Target Number of Time Policies</label>
+        <default>5</default>
+      </input>
       <table>
         <search base="historical">
-          <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
-| eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin
-
-| bin a_value span=$a_bin_tok$ as a_policy
-| bin b_value span=$b_bin_tok$ as b_policy
-
-| eval policy_intersect = "[".a_policy."] - [".b_policy."]"
+          <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value perc01(alert_value) as c_value perc99(alert_value) as d_value by date_hour date_wday 
+| fit KMeans k=$num_clusters2$ "c_value" "d_value"
 
 | eval date_hour=if(date_hour&lt;10,"0".date_hour, date_hour)
 | eval date_wday=case(date_wday="monday",1,date_wday="tuesday",2,date_wday="wednesday",3,date_wday="thursday",4,date_wday="friday",5,date_wday="saturday",6,date_wday="sunday",7)."-".date_wday
 
-| streamstats count as policy
-| eventstats first(policy) as policy by policy_intersect
+| sort date_hour, date_wday
 
-| eventstats count as policy_cnt by policy
+| eventstats count as policy_cnt by cluster
 | eventstats max(policy_cnt) as max_policy
-| eval policy = if(policy_cnt=max_policy, "", policy)
+| eval policy = if(policy_cnt=max_policy, "", cluster)
 
 | sort date_hour, date_wday
 
 | fields - max_policy policy_cnt date policy_num
 
 | chart limit=0 values(policy) over date_wday by date_hour</query>
-        </search>
-        <option name="count">20</option>
-        <option name="dataOverlayMode">none</option>
-        <option name="drilldown">none</option>
-        <option name="percentagesRow">false</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="rowNumbers">false</option>
-        <option name="totalsRow">false</option>
-        <option name="wrap">true</option>
-      </table>
-    </panel>
-  </row>
-  <row>
-    <panel>
-      <table>
-        <search base="historical">
-          <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday
-| eventstats  stdev(a_value) as a_bin avg(a_value) as b_bin
-
-| bin a_value span=$a_bin_tok$ as a_policy
-| bin b_value span=$b_bin_tok$ as b_policy
-
-| eval policy_intersect = "[".a_policy."] - [".b_policy."]"
-
-| eval date_hour=if(date_hour&lt;10,"0".date_hour, date_hour)
-| eval date_wday=case(date_wday="monday",1,date_wday="tuesday",2,date_wday="wednesday",3,date_wday="thursday",4,date_wday="friday",5,date_wday="saturday",6,date_wday="sunday",7)."-".date_wday
-
-| streamstats count as policy
-| eventstats first(policy) as policy by policy_intersect
-
-| eventstats count as policy_cnt by policy
-| eventstats max(policy_cnt) as max_policy
-| eval policy = if(policy_cnt=max_policy, "default", policy)
-
-| sort date_hour, date_wday
-
-| fields - max_policy policy_cnt date policy_num
-
-| stats first(date_hour) as date_hour, first(date_wday) as date_wday values(a_policy) as a_policy values(b_policy) as b_policy avg(a_value) as a_value avg(b_value) as b_value by policy
-
-| sort date_hour, date_wday
-| table policy, a_policy, b_policy
-| rename a_policy as "Stdev Range", b_policy as "Mean Range"</query>
         </search>
         <option name="count">20</option>
         <option name="dataOverlayMode">none</option>
