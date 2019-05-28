@@ -716,7 +716,7 @@
       </viz>
     </panel>
   </row>
-  <row depends="$mode_advanced$">
+  <row depends="$mode_advanced$,$num_clusters$">
     <panel>
       <title>Suggested Time Policy for Standard Deviation</title>
       <input type="text" token="num_clusters">
@@ -726,7 +726,9 @@
       <table>
         <search base="historical">
           <query>| stats stdev(alert_value) as a_value mean(alert_value) as b_value by date_hour date_wday 
-| fit KMeans k=$num_clusters$ "a_value" "b_value"
+
+| fit StandardScaler "a_value", "b_value" with_mean=true with_std=true
+| fit KMeans k=$num_clusters$ "SS_a_value" "SS_b_value"
 
 | eval date_hour=if(date_hour&lt;10,"0".date_hour, date_hour)
 | eval date_wday=case(date_wday="monday",1,date_wday="tuesday",2,date_wday="wednesday",3,date_wday="thursday",4,date_wday="friday",5,date_wday="saturday",6,date_wday="sunday",7)."-".date_wday
@@ -796,7 +798,7 @@
       </viz>
     </panel>
   </row>
-  <row depends="$mode_advanced$">
+  <row depends="$mode_advanced$,$num_clusters2$">
     <panel>
       <title>Suggested Time Policy for Range and Quantile</title>
       <input type="text" token="num_clusters2">
