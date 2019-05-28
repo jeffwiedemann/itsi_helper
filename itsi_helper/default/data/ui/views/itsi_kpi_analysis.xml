@@ -1,5 +1,19 @@
 <form theme="dark">
-  <label>ITSI KPI Analysis (With Base Searches)</label>
+  <label>ITSI KPI Analysis</label>
+  <init>
+    <set token="help_s1_overview">This section provides information regarding the health of the KPI within the framework of ITSI. Before KPI thresholding can be meaningfully performed it is important to ensure the KPI is consistently running and is generally healthy</set>
+    <set token="help_s1_p1">5 minute KPIs should consistently produce 12 results per hour. 15 minutes KPIs should produce 4 results per hour. This graph shows the number of record written to the itsi_summary index per hour relative to the expected number of results. While some variance might occur, repeat and consistent deviations of actual vs. expected may indicate a resource limitation in Splunk where the KPI cannot consistently run. This will need to be investigated</set>
+    <set token="help_s1_p2">TBD. Is this an important thing to track?</set>
+    <set token="help_s2_overview">This section provides information regarding the severity values of the KPI as determined by the threshold values configured when the KPI ran and results were recorded to the itsi_summary index. This view provides an accurate historical record and view of how the KPI severity was rendered in the Service Analyzer and Deep Dive at that time. By contrast, retrospective review the KPI results in the Deep Dive will dynamically recompute and render severities based on the current threshold configurations. While this behavior is typically desirable, it means that there is no native view in ITSI where administrators can see the historically accurate KPI severity values. The panels in this section address this need</set>
+    <set token="help_s2_p1">This panel provides the overall distribution of severity values for the KPI. Ensure that your KPI severities distribution meets your expectations based on the historical data. For instance, if you're looking at the KPI values for the last week, and the week was a 'normal' week, you would not expect to see a large percentage of high or critical values.</set>
+    <set token="help_s2_p2">On this timechart, normal results for the KPI are plotted as a green line. Abnormal results are plotted in their respective color where they occur. The green normal line will be discontinuous in the presence of abnormal results. The height of the line corresponds to the alert value so it is easily to visualize when results, normal or otherwise, are incorrectly computed. Unknown results are plotted under the timechart in grey and should be investigated. Zero value results have no height and will not appear on the graph even if they are abnormal</set>
+    <set token="help_s2_p3">This panel will allow you to see trends in how KPI severities align to specific days and specific hours within a day. The size of the circle for that hour is sized relative to all other values, larger circles indicate a higher concentration of selected severities compared with other hours and other days. To gain value from this panel, select a specific severity (for instance critical) and look to see if there exists a trend or concentration of these events in a particular hour of day or day of week. If the trend is unexpected it could indicate that thresholds for that trend need to be adjusted.</set>
+    <set token="help_s3_overview">The panels in this section are identical to the section above with one major exception. Instead of rendering KPI severity values based on the historical results written to the itsi_summary index, these severities are dynamically computed based on the currently configured thresholds for the service. This section is intended to allow the ITSI service administrator to alter threshold configurations in the service and immediately see how the changes would impact the KPIs historical results. Use this sections capabilities to incrementally improve instances where the historical threshold did not compute as desired or expected</set>
+    <set token="help_s4_overview">The panels in this section are identical to the section above with one major exception. This section contains an alert value multiplier which allows the ITSI service administrator to evaluate the performance of the current threshold configurations after the historical KPI values have been either increased or decreased by the alert value multiplier. For instance, specifying a multiplier of 0.5 will reduce all historical results by fifty percent and recompute the KPI severities based on these new KPI values and current threshold configurations. Similarly, specifying a multiplier of 2.0 would double historical KPI values. The ITSI service administrator can use this section gain confidence that the current threshold configurations adequately detect extreme increases and decreases in KPI values when the occur</set>
+    <set token="help_s5_overview">The panels in this section help to visualize KPI values by hour of the day and day of week to find similar groups. The ITSI service administrator can use these panels to determine the most effective time policies to build within the service configuration.</set>
+    <set token="help_s5_p1_p2">These panels compute and display the alert value mean and alert value standard deviation by hour of day and day of week. The size of the circle is relative to value for that hour as compared to all other values. Similar sized circles indicate hours where the KPI behaves similarly for that value. When using the standard deviation adaptive threshold policy, hours which share similar mean and standard deviation values should be grouped together in the same time policy</set>
+    <set token="help_s5_p3">This panel uses a ML clustering algorithm to determine similar groups. This provides a suggested starting point for which hours and which days should be grouped together in a single time policy. You can increase or decrease the target number of time policies to have the algorithm group together more or fewer hours</set>
+  </init>
   <search id="historical">
     <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0  is_service_aggregate=1  | table *</query>
     <earliest>$field1.earliest$</earliest>
@@ -40,7 +54,7 @@
     <input type="time" token="field1">
       <label></label>
       <default>
-        <earliest>-24h@h</earliest>
+        <earliest>-7d@h</earliest>
         <latest>now</latest>
       </default>
     </input>
@@ -61,11 +75,62 @@
       </search>
       <prefix>kpiid=</prefix>
     </input>
+    <input type="dropdown" token="mode">
+      <label>Dashboard Mode</label>
+      <choice value="1">Simple</choice>
+      <choice value="2">Intermediate</choice>
+      <choice value="3">Advanced</choice>
+      <default>1</default>
+      <change>
+        <condition value="1">
+          <set token="mode_simple">true</set>
+          <unset token="mode_intermediate"></unset>
+          <unset token="mode_advanced"></unset>
+        </condition>
+        <condition value="2">
+          <set token="mode_simple">true</set>
+          <set token="mode_intermediate"></set>
+          <unset token="mode_advanced"></unset>
+        </condition>
+        <condition value="3">
+          <set token="mode_simple">true</set>
+          <set token="mode_intermediate"></set>
+          <set token="mode_advanced"></set>
+        </condition>
+      </change>
+    </input>
+    <input type="dropdown" token="help">
+      <label>Show Help</label>
+      <choice value="1">Yes</choice>
+      <choice value="0">No</choice>
+      <default>0</default>
+      <change>
+        <condition value="1">
+          <set token="help">true</set>
+        </condition>
+        <condition value="0">
+          <unset token="help"></unset>
+        </condition>
+      </change>
+    </input>
   </fieldset>
   <row>
     <panel>
       <html>
         <h1>Overall KPI Health</h1>
+      </html>
+    </panel>
+  </row>
+  <row depends="$help$">
+    <panel>
+      <html>
+        <b>Section Overview</b>
+        <p>$help_s1_overview$</p>
+        
+        <p>
+          <b>KPI Frequency Actual vs Expected</b> - $help_s1_p1$</p>
+        <p>
+          <b>KPI Result Timestamp Minute of Hour</b> - $help_s1_p2$</p>
       </html>
     </panel>
   </row>
@@ -144,6 +209,21 @@
       </html>
     </panel>
   </row>
+  <row depends="$help$">
+    <panel>
+      <html>
+        <b>Section Overview</b>
+        <p>$help_s2_overview$</p>
+        
+        <p>
+          <b>Distribution of KPI Severity</b> - $help_s2_p1$</p>
+        <p>
+          <b>KPI Severities over Time</b> - $help_s2_p2$</p>
+        <p>
+          <b>Distribution of KPI Severities by Hour of Day and Day of Week</b> - $help_s2_p3$</p>
+      </html>
+    </panel>
+  </row>
   <row>
     <panel>
       <title>Distribution of KPI Severity</title>
@@ -234,54 +314,8 @@
     </panel>
   </row>
   <row>
-    <panel rejects="$hide_panel$">
-      <title>KPI Alert Value Delta (Result to Result)</title>
-      <chart>
-        <search base="historical">
-          <query>| eval alert_value = if(alert_level&gt;0, alert_value, -1)
-| sort _time
-| delta alert_value as alert_value_delta
-| timechart span=5m max(alert_value_delta) as alert_value_delta by alert_severity</query>
-        </search>
-        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
-        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
-        <option name="charting.axisTitleX.visibility">visible</option>
-        <option name="charting.axisTitleY.visibility">visible</option>
-        <option name="charting.axisTitleY2.visibility">visible</option>
-        <option name="charting.axisX.abbreviation">none</option>
-        <option name="charting.axisX.scale">linear</option>
-        <option name="charting.axisY.abbreviation">none</option>
-        <option name="charting.axisY.scale">linear</option>
-        <option name="charting.axisY2.abbreviation">none</option>
-        <option name="charting.axisY2.enabled">0</option>
-        <option name="charting.axisY2.scale">inherit</option>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.bubbleMaximumSize">50</option>
-        <option name="charting.chart.bubbleMinimumSize">10</option>
-        <option name="charting.chart.bubbleSizeBy">area</option>
-        <option name="charting.chart.nullValueMode">gaps</option>
-        <option name="charting.chart.showDataLabels">none</option>
-        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.chart.style">shiny</option>
-        <option name="charting.drilldown">none</option>
-        <option name="charting.fieldColors">{"normal":#99D18B, "critical":#B50101, "high":#F26A35, "medium":#FCB64E, "low":#FFE98C, "info":#AED3E5, "unknown":#A9A9A9}</option>
-        <option name="charting.layout.splitSeries">0</option>
-        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
-        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
-        <option name="charting.legend.mode">standard</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="charting.lineWidth">2</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="trellis.enabled">0</option>
-        <option name="trellis.scales.shared">1</option>
-        <option name="trellis.size">medium</option>
-      </chart>
-    </panel>
-  </row>
-  <row>
     <panel>
-      <title>Distribution of KPI Severities by Hour of Day and Day of Week (Color coded by most severe result per group)</title>
+      <title>Distribution of KPI Severities by Hour of Day and Day of Week</title>
       <input type="multiselect" token="severity">
         <label>Severities</label>
         <choice value="2">Normal</choice>
@@ -309,7 +343,7 @@
         <option name="punchcard_app.punchcard.minColor">#D3D3D3</option>
         <option name="punchcard_app.punchcard.numOfBins">9</option>
         <option name="punchcard_app.punchcard.radiusScale">global</option>
-        <option name="punchcard_app.punchcard.useColors">true</option>
+        <option name="punchcard_app.punchcard.useColors">false</option>
         <option name="refresh.display">progressbar</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
@@ -317,14 +351,22 @@
       </viz>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_intermediate$">
     <panel>
       <html>
         <h1>Dynamically Computed KPI Results and Performance</h1>
       </html>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_intermediate$,$help$">
+    <panel>
+      <html>
+        <b>Section Overview</b>
+        <p>$help_s3_overview$</p>
+      </html>
+    </panel>
+  </row>
+  <row depends="$mode_intermediate$">
     <panel>
       <title>Distribution of KPI Severity</title>
       <chart>
@@ -367,7 +409,7 @@
       </chart>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_intermediate$">
     <panel>
       <title>KPI Severities over Time</title>
       <chart>
@@ -413,55 +455,9 @@
       </chart>
     </panel>
   </row>
-  <row>
-    <panel rejects="$hide_panel$">
-      <title>KPI Alert Value Delta (Result to Result)</title>
-      <chart>
-        <search base="dynamic">
-          <query>| eval alert_value = if(alert_level&gt;0, alert_value, -1)
-| sort _time
-| delta alert_value as alert_value_delta
-| timechart span=5m max(alert_value_delta) as alert_value_delta by alert_severity</query>
-        </search>
-        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
-        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
-        <option name="charting.axisTitleX.visibility">visible</option>
-        <option name="charting.axisTitleY.visibility">visible</option>
-        <option name="charting.axisTitleY2.visibility">visible</option>
-        <option name="charting.axisX.abbreviation">none</option>
-        <option name="charting.axisX.scale">linear</option>
-        <option name="charting.axisY.abbreviation">none</option>
-        <option name="charting.axisY.scale">linear</option>
-        <option name="charting.axisY2.abbreviation">none</option>
-        <option name="charting.axisY2.enabled">0</option>
-        <option name="charting.axisY2.scale">inherit</option>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.bubbleMaximumSize">50</option>
-        <option name="charting.chart.bubbleMinimumSize">10</option>
-        <option name="charting.chart.bubbleSizeBy">area</option>
-        <option name="charting.chart.nullValueMode">gaps</option>
-        <option name="charting.chart.showDataLabels">none</option>
-        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.chart.style">shiny</option>
-        <option name="charting.drilldown">none</option>
-        <option name="charting.fieldColors">{"normal":#99D18B, "critical":#B50101, "high":#F26A35, "medium":#FCB64E, "low":#FFE98C, "info":#AED3E5, "unknown":#A9A9A9}</option>
-        <option name="charting.layout.splitSeries">0</option>
-        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
-        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
-        <option name="charting.legend.mode">standard</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="charting.lineWidth">2</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="trellis.enabled">0</option>
-        <option name="trellis.scales.shared">1</option>
-        <option name="trellis.size">medium</option>
-      </chart>
-    </panel>
-  </row>
-  <row>
+  <row depends="$mode_intermediate$">
     <panel>
-      <title>Distribution of KPI Severities by Hour of Day and Day of Week (Color coded by most severe result per group)</title>
+      <title>Distribution of KPI Severities by Hour of Day and Day of Week</title>
       <input type="multiselect" token="dyn_severity">
         <label>Severities</label>
         <choice value="2">Normal</choice>
@@ -490,12 +486,27 @@
         <option name="punchcard_app.punchcard.minColor">#D3D3D3</option>
         <option name="punchcard_app.punchcard.numOfBins">9</option>
         <option name="punchcard_app.punchcard.radiusScale">global</option>
-        <option name="punchcard_app.punchcard.useColors">true</option>
+        <option name="punchcard_app.punchcard.useColors">false</option>
         <option name="refresh.display">progressbar</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
         <option name="trellis.size">medium</option>
       </viz>
+    </panel>
+  </row>
+  <row depends="$mode_intermediate$">
+    <panel>
+      <html>
+        <h1>Adjustable KPI Values Dynamically Computed KPI Results and Performance</h1>
+      </html>
+    </panel>
+  </row>
+  <row depends="$mode_intermediate$,$help$">
+    <panel>
+      <html>
+        <b>Section Overview</b>
+        <p>$help_s4_overview$</p>
+      </html>
     </panel>
   </row>
   <row>
@@ -504,12 +515,9 @@
         <label>Alert Value Multiplier</label>
         <default>1.0</default>
       </input>
-      <html>
-        <h1>Adjustable KPI Values Dynamically Computed KPI Results and Performance</h1>
-      </html>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_intermediate$">
     <panel>
       <title>Distribution of KPI Severity</title>
       <chart>
@@ -552,7 +560,7 @@
       </chart>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_intermediate$">
     <panel>
       <title>KPI Severities over Time</title>
       <chart>
@@ -598,55 +606,9 @@
       </chart>
     </panel>
   </row>
-  <row>
-    <panel rejects="$hide_panel$">
-      <title>KPI Alert Value Delta (Result to Result)</title>
-      <chart>
-        <search base="adjusted">
-          <query>| eval alert_value = if(alert_level&gt;0, alert_value, -1)
-| sort _time
-| delta alert_value as alert_value_delta
-| timechart span=5m max(alert_value_delta) as alert_value_delta by alert_severity</query>
-        </search>
-        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
-        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
-        <option name="charting.axisTitleX.visibility">visible</option>
-        <option name="charting.axisTitleY.visibility">visible</option>
-        <option name="charting.axisTitleY2.visibility">visible</option>
-        <option name="charting.axisX.abbreviation">none</option>
-        <option name="charting.axisX.scale">linear</option>
-        <option name="charting.axisY.abbreviation">none</option>
-        <option name="charting.axisY.scale">linear</option>
-        <option name="charting.axisY2.abbreviation">none</option>
-        <option name="charting.axisY2.enabled">0</option>
-        <option name="charting.axisY2.scale">inherit</option>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.bubbleMaximumSize">50</option>
-        <option name="charting.chart.bubbleMinimumSize">10</option>
-        <option name="charting.chart.bubbleSizeBy">area</option>
-        <option name="charting.chart.nullValueMode">gaps</option>
-        <option name="charting.chart.showDataLabels">none</option>
-        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.chart.style">shiny</option>
-        <option name="charting.drilldown">none</option>
-        <option name="charting.fieldColors">{"normal":#99D18B, "critical":#B50101, "high":#F26A35, "medium":#FCB64E, "low":#FFE98C, "info":#AED3E5, "unknown":#A9A9A9}</option>
-        <option name="charting.layout.splitSeries">0</option>
-        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
-        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
-        <option name="charting.legend.mode">standard</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="charting.lineWidth">2</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="trellis.enabled">0</option>
-        <option name="trellis.scales.shared">1</option>
-        <option name="trellis.size">medium</option>
-      </chart>
-    </panel>
-  </row>
-  <row>
+  <row depends="$mode_intermediate$">
     <panel>
-      <title>Distribution of KPI Severities by Hour of Day and Day of Week (Color coded by most severe result per group)</title>
+      <title>Distribution of KPI Severities by Hour of Day and Day of Week</title>
       <input type="multiselect" token="adj_severity">
         <label>Severities</label>
         <choice value="2">Normal</choice>
@@ -675,7 +637,7 @@
         <option name="punchcard_app.punchcard.minColor">#D3D3D3</option>
         <option name="punchcard_app.punchcard.numOfBins">9</option>
         <option name="punchcard_app.punchcard.radiusScale">global</option>
-        <option name="punchcard_app.punchcard.useColors">true</option>
+        <option name="punchcard_app.punchcard.useColors">false</option>
         <option name="refresh.display">progressbar</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
@@ -683,14 +645,26 @@
       </viz>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_advanced$">
     <panel>
       <html>
         <h1>Time Policy Suggestions and Guidance</h1>
       </html>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_advanced$,$help$">
+    <panel>
+      <html>
+        <b>Section Overview</b>
+        <p>$help_s5_overview$</p>
+        <p>
+          <b>KPI Mean &amp; Stdev Alert Value Distributions</b> - $help_s5_p1_p2$</p>
+        <p>
+          <b>Suggested Time Policy for Standard Deviation</b> - $help_s5_p3$</p>
+      </html>
+    </panel>
+  </row>
+  <row depends="$mode_advanced$">
     <panel>
       <title>KPI Mean Alert Value Distribution</title>
       <viz type="punchcard_app.punchcard">
@@ -711,7 +685,7 @@
       </viz>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_advanced$">
     <panel>
       <title>KPI Stdev Alert Value Distribution</title>
       <viz type="punchcard_app.punchcard">
@@ -732,7 +706,7 @@
       </viz>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_advanced$">
     <panel>
       <title>Suggested Time Policy for Standard Deviation</title>
       <input type="text" token="num_clusters">
@@ -770,7 +744,7 @@
       </table>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_advanced$">
     <panel>
       <title>KPI Min Alert Value Distribution</title>
       <viz type="punchcard_app.punchcard">
@@ -791,7 +765,7 @@
       </viz>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_advanced$">
     <panel>
       <title>KPI Max Alert Value Distribution</title>
       <viz type="punchcard_app.punchcard">
@@ -812,7 +786,7 @@
       </viz>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_advanced$">
     <panel>
       <title>Suggested Time Policy for Range and Quantile</title>
       <input type="text" token="num_clusters2">
