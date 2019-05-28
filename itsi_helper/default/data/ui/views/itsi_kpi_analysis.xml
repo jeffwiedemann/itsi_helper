@@ -1,7 +1,7 @@
 <form theme="dark">
   <label>ITSI KPI Analysis</label>
   <init>
-    <set token="help_s1_overview">This section provides information regarding the health of the KPI within the framework of ITSI. Before KPI thresholding can be meaningfully performed it is important to ensure the KPI is consistently running and is generally healthy</set>
+    <set token="help_s1_overview">This section provides information regarding the health of the KPI within the framework of ITSI. Before KPI thresholding can be meaningfully performed it is important to ensure the KPI is consistently running and is generally healthy. If the panels in this section appear unhealthy or concerning, simply click the panel and be taken to the ITSI Health Check dashboard for further troubleshooting</set>
     <set token="help_s1_p1">5 minute KPIs should consistently produce 12 results per hour. 15 minutes KPIs should produce 4 results per hour. This graph shows the number of record written to the itsi_summary index per hour relative to the expected number of results. While some variance might occur, repeat and consistent deviations of actual vs. expected may indicate a resource limitation in Splunk where the KPI cannot consistently run. This will need to be investigated</set>
     <set token="help_s1_p2">TBD. Is this an important thing to track?</set>
     <set token="help_s2_overview">This section provides information regarding the severity values of the KPI as determined by the threshold values configured when the KPI ran and results were recorded to the itsi_summary index. This view provides an accurate historical record and view of how the KPI severity was rendered in the Service Analyzer and Deep Dive at that time. By contrast, retrospective review the KPI results in the Deep Dive will dynamically recompute and render severities based on the current threshold configurations. While this behavior is typically desirable, it means that there is no native view in ITSI where administrators can see the historically accurate KPI severity values. The panels in this section address this need</set>
@@ -28,7 +28,7 @@
     </finalized>
   </search>
   <search base="historical">
-    <query>| timechart count span=1h | stats min(count) as min max(count) as max | eval min=min-1 | eval max=max+1</query>
+    <query>| timechart count span=1h | sort - _time | streamstats count as inc | where inc!=1 | stats min(count) as min max(count) as max | eval min=min-1 | eval max=max+1</query>
     <finalized>
       <condition match="'job.resultCount' != 0">
         <set token="kpi_freq_min">$result.min$</set>
@@ -129,8 +129,6 @@
         
         <p>
           <b>KPI Frequency Actual vs Expected</b> - $help_s1_p1$</p>
-        <p>
-          <b>KPI Result Timestamp Minute of Hour</b> - $help_s1_p2$</p>
       </html>
     </panel>
   </row>
@@ -169,7 +167,7 @@
         <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
         <option name="charting.chart.stackMode">default</option>
         <option name="charting.chart.style">shiny</option>
-        <option name="charting.drilldown">none</option>
+        <option name="charting.drilldown">all</option>
         <option name="charting.layout.splitSeries">0</option>
         <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
         <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
@@ -180,11 +178,14 @@
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
         <option name="trellis.size">medium</option>
+        <drilldown>
+          <link target="_blank">/app/itsi/itsi_healthcheck</link>
+        </drilldown>
       </chart>
     </panel>
   </row>
   <row>
-    <panel>
+    <panel depends="$bogus$">
       <title>KPI Result Timestamp Minute of Hour</title>
       <viz type="punchcard_app.punchcard">
         <search base="historical">
@@ -274,7 +275,8 @@
         <search base="historical">
           <query>| eventstats perc50(alert_value) as p90_alert_value
 | eval alert_value = if(alert_level&gt;0, alert_value, -1*p90_alert_value)
-| timechart max(alert_value) as alert_value span=5m@5m by alert_severity</query>
+| bin _time span=1m@m
+| chart max(alert_value) as alert_value over _time by alert_severity</query>
         </search>
         <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
@@ -306,6 +308,8 @@
         <option name="charting.legend.mode">standard</option>
         <option name="charting.legend.placement">right</option>
         <option name="charting.lineWidth">2</option>
+        <option name="charting.data.count">500000</option>
+        <option name="charting.chart.resultTruncationLimit">500000</option>
         <option name="refresh.display">progressbar</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
@@ -416,7 +420,8 @@
         <search base="dynamic">
           <query>| eventstats perc50(alert_value) as p90_alert_value
 | eval alert_value = if(alert_level&gt;0, alert_value, -1*p90_alert_value)
-| timechart max(alert_value) as alert_value span=5m@5m by alert_severity</query>
+| bin _time span=1m@m
+| chart max(alert_value) as alert_value over _time by alert_severity</query>
         </search>
         <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
@@ -448,6 +453,8 @@
         <option name="charting.legend.mode">standard</option>
         <option name="charting.legend.placement">right</option>
         <option name="charting.lineWidth">2</option>
+        <option name="charting.data.count">500000</option>
+        <option name="charting.chart.resultTruncationLimit">500000</option>
         <option name="refresh.display">progressbar</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
@@ -509,7 +516,7 @@
       </html>
     </panel>
   </row>
-  <row>
+  <row depends="$mode_intermediate$">
     <panel>
       <input type="text" token="av_multiplier">
         <label>Alert Value Multiplier</label>
@@ -567,7 +574,8 @@
         <search base="adjusted">
           <query>| eventstats perc50(alert_value) as p90_alert_value
 | eval alert_value = if(alert_level&gt;0, alert_value, -1*p90_alert_value)
-| timechart max(alert_value) as alert_value span=5m@5m by alert_severity</query>
+| bin _time span=1m@m
+| chart max(alert_value) as alert_value over _time by alert_severity</query>
         </search>
         <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
@@ -599,6 +607,8 @@
         <option name="charting.legend.mode">standard</option>
         <option name="charting.legend.placement">right</option>
         <option name="charting.lineWidth">2</option>
+        <option name="charting.data.count">500000</option>
+        <option name="charting.chart.resultTruncationLimit">500000</option>
         <option name="refresh.display">progressbar</option>
         <option name="trellis.enabled">0</option>
         <option name="trellis.scales.shared">1</option>
