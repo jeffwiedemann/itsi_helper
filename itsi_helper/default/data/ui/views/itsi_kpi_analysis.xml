@@ -114,6 +114,20 @@
       </change>
     </input>
   </fieldset>
+  <row depends="$help$">
+    <panel>
+      <title></title>
+      <html>
+        <h1>Splunkbase Application Prerequisites</h1>
+        <p>To function properly, please make sure the following apps have been installed in this environment</p>
+        
+        <p><b>Machine Learning Toolkit</b> - <a href="https://splunkbase.splunk.com/app/2890/">https://splunkbase.splunk.com/app/2890/</a></p>
+        <p><b>Python for Scientific Computing</b> - <a href="https://splunkbase.splunk.com/apps/#/search/Python%20for%20Scientific%20Computing/">https://splunkbase.splunk.com/apps/#/search/Python%20for%20Scientific%20Computing/</a></p>
+        <p><b>Punchcard Visualization</b> - <a href="https://splunkbase.splunk.com/app/3129/">https://splunkbase.splunk.com/app/3129/</a></p>
+          
+      </html>
+    </panel>
+  </row>
   <row>
     <panel>
       <html>
