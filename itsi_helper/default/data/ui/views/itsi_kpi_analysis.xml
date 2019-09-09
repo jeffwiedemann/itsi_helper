@@ -15,7 +15,7 @@
     <set token="help_s5_p3">This panel uses a ML clustering algorithm to determine similar groups. This provides a suggested starting point for which hours and which days should be grouped together in a single time policy. You can increase or decrease the target number of time policies to have the algorithm group together more or fewer hours</set>
   </init>
   <search id="historical">
-    <query>index=itsi_summary $kpiid$ is_service_max_severity_event=0  is_service_aggregate=1  | table *</query>
+    <query>index=itsi_summary $kpiid$ | eval is_shs = if(LIKE(kpiid,"SH%"),1,0) | where is_shs=1 OR (is_service_aggregate=1 AND is_service_max_severity_event=0) | table *</query>
     <earliest>$field1.earliest$</earliest>
     <latest>$field1.latest$</latest>
     <sampleRatio>1</sampleRatio>
